@@ -1,0 +1,402 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=search" />
+    <!-- <link rel="stylesheet" href="/style.css"> -->
+     <style>
+        * {
+    margin: 0; /* Removed % */
+    padding: 0; /* Removed % */
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+.prev-btn, .next-btn, .page-btn {
+    margin: 5px;
+    padding: 10px;
+    cursor: pointer;
+   
+    border: 1px solid #ddd;
+    background-color: #f1f1f1;
+}
+
+.prev-btn:hover, .next-btn:hover, .page-btn:hover {
+    background-color: #ddd;
+}
+
+.prev-btn:disabled, .next-btn:disabled, .page-btn:disabled {
+    cursor: not-allowed;
+    background-color: #ccc;
+    border-color: #aaa;
+}
+
+
+body {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-block: 40px;
+}
+
+header {
+    width: 100%;
+    max-width: 800px; /* Use max-width to allow for flexibility */
+    text-align: center;
+}
+
+header h1 {
+    color: #767676;
+}
+
+header form .search-container {
+    margin-top: 20px;
+    position: relative;
+}
+
+header form .search-container input {
+    width: 100%; /* Changed from fixed width (800px) to responsive */
+    font-size: 18px;
+    padding: 12px 24px;
+    border-radius: 20px;
+    border: none;
+    background: #eee;
+}
+
+header form .search-container .material-symbols-outlined {
+    position: absolute;
+    right: 10px;
+    bottom: 12px;
+    color: #777;
+    cursor: pointer;
+}
+
+.images-container {
+    margin-block: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 40px;
+}
+
+.images-container img {
+    width: 300px;
+    height: 280px;
+}
+
+.images-container .imageDiv {
+    position: relative;
+}
+
+.imageDiv .overlay {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    transition: height 0.3s ease-in-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.imageDiv:hover .overlay {
+    height: 100%;
+}
+
+.imageDiv .overlay h3 {
+    color: white;
+    display: none;
+    text-align: center;
+    font-size: 20px;
+}
+
+.imageDiv:hover .overlay h3 {
+    display: block;
+}
+
+.loadMoreBtn {
+    border: none;
+    background-color: lightgray;
+    color: #eee;
+    width: 30%;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold; /* Fixed invalid font-weight */
+    padding: 8px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+    display: none;
+}
+
+main section {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0 50px 0;
+}
+
+/* Suggestions List */
+.suggestions-list {
+    border: 1px solid #ccc;
+    background: white;
+    position: absolute;
+    z-index: 10;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.suggestion-item:hover {
+    background-color: #f0f0f0;
+}
+
+.suggestion-thumbnail {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+}
+
+/* Media Query */
+@media screen and (max-width: 920px) {
+    header {
+        width: 100%; /* Adjusted for smaller screens */
+    }
+
+    header form .search-container input {
+        width: 100%; /* Ensure the search input is responsive */
+    }
+}
+
+     </style>
+    <title>Document</title>
+</head>
+<body>
+    <header>
+        <h1>Image Search App</h1>
+        <form action="">
+            <div class="search-container">
+
+           
+            <input type="text" class="search-input" placeholder="Search images" class="search-input">
+            <div class="suggestions-list"></div>
+            <span class="material-symbols-outlined">
+                search
+                </span>
+            </div>
+        </form>
+    </header>
+<main>
+    <section>
+        <div class="images-container">
+            <h2> No image to show</h2>
+
+        </div>
+
+        <div class="loadMoreBtn">
+            <div class="pagination-container">
+                <a href="#">&laquo;</a>
+                <a href="#">1</a>
+                <a class="active" href="#">2</a>
+                <a href="#">3</a>
+                <a href="#">&raquo;</a>
+              </div>
+        </div>
+    </section>
+</main>
+
+
+<!-- 
+    <script src="/main.js"></script> -->
+    <script>
+ const accessKey = "DYp3QWnQ75ETkLGpP0EBejYK-MVMU9-240B93w1odMA";
+
+const searchForm = document.querySelector('form');
+const imagesContainer = document.querySelector('.images-container');
+const searchInput = document.querySelector('.search-input');
+const suggestionsList = document.querySelector('.suggestions-list');
+const loadMoreBtn = document.querySelector('.loadMoreBtn');
+
+let totalPages = 1;
+let currentPage = 1;
+const maxPageLimit = 10; // Maximum number of pages to display
+
+// Fetch images based on the search query and page number
+const fetchImages = async (query, pageNo) => {
+    try {
+        imagesContainer.innerHTML = ''; // Clear previous images
+
+        const url = `https://api.unsplash.com/search/photos?query=${query}&per_page=6&page=${pageNo}&client_id=${accessKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.results.length > 0) {
+            data.results.forEach(photo => {
+                const imageElement = document.createElement('div');
+                imageElement.classList.add('imageDiv');
+                imageElement.innerHTML = `<img src="${photo.urls.regular}" alt="${photo.alt_description || 'Image'}"/>`;
+
+                const overlayElement = document.createElement('div');
+                overlayElement.classList.add('overlay');
+                const overlayText = document.createElement('h3');
+                overlayText.innerHTML = `${photo.alt_description || "No description available"}`;
+                overlayElement.appendChild(overlayText);
+                imageElement.appendChild(overlayElement);
+                imagesContainer.appendChild(imageElement);
+            });
+
+            totalPages = Math.min(data.total_pages, maxPageLimit); // Limit total pages to 10
+            createPaginationButtons(totalPages, query); // Create pagination buttons
+
+        } else {
+            imagesContainer.innerHTML = `<h3>No images found</h3>`;
+            loadMoreBtn.innerHTML = ''; // Clear pagination if no images are found
+        }
+
+    } catch (error) {
+        imagesContainer.innerHTML = `<h3>Something went wrong. Please try again later.</h3>`;
+        loadMoreBtn.innerHTML = ''; // Clear pagination in case of error
+    }
+};
+
+// Fetch suggestions based on the input
+const fetchSuggestions = async (query) => {
+    try {
+        if (query.length === 0) {
+            suggestionsList.innerHTML = ''; // Clear suggestions if input is empty
+            return;
+        }
+
+        const url = `https://api.unsplash.com/search/photos?query=${query}&per_page=6&client_id=${accessKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        suggestionsList.innerHTML = ''; // Clear previous suggestions
+
+        if (data.results.length > 0) {
+            data.results.forEach((result) => {
+                const suggestionItem = document.createElement('div');
+                suggestionItem.classList.add('suggestion-item');
+                suggestionItem.innerText = result.alt_description || 'No description available';
+
+                suggestionItem.addEventListener('click', () => {
+                    searchInput.value = result.alt_description || 'No description available'; // Fill the input with selected suggestion
+                    suggestionsList.innerHTML = ''; // Clear suggestions on selection
+                });
+
+                suggestionsList.appendChild(suggestionItem);
+            });
+        } else {
+            suggestionsList.innerHTML = `<div class="no-suggestions">No suggestions found</div>`;
+        }
+    } catch (error) {
+        console.error('Error fetching suggestions:', error);
+    }
+};
+
+// Debounce function to limit the rate at which a function can fire
+const debounce = (func, delay) => {
+    let timeoutId;
+    return (...args) => {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+        timeoutId = setTimeout(() => {
+            func.apply(null, args);
+        }, delay);
+    };
+};
+
+// Event listener for the search input to show suggestions as the user types
+searchInput.addEventListener('input', debounce((e) => {
+    const query = e.target.value.trim();
+    fetchSuggestions(query);
+}, 300)); // 300ms debounce to avoid too many API calls
+
+// Function to create pagination buttons
+const createPaginationButtons = (totalPages, query) => {
+    loadMoreBtn.innerHTML = ''; // Clear previous pagination buttons
+
+    // "Previous" button
+    const prevButton = document.createElement('button');
+    prevButton.innerText = 'Previous'; 
+    prevButton.classList.add('prev-btn');
+    prevButton.disabled = currentPage === 1; // Disable if on the first page
+
+    prevButton.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            fetchImages(query, currentPage);
+        }
+    });
+    loadMoreBtn.appendChild(prevButton);
+
+    // Page number buttons
+    const startPage = Math.max(1, currentPage - 1);
+    const endPage = Math.min(startPage + 2, totalPages);
+
+    for (let page = startPage; page <= endPage; page++) {
+        const pageButton = document.createElement('button');
+        pageButton.innerText = page;
+        pageButton.classList.add('page-btn');
+        pageButton.disabled = page === currentPage; // Disable the button for the current page
+
+        pageButton.addEventListener('click', () => {
+            currentPage = page;
+            fetchImages(query, currentPage);
+        });
+
+        loadMoreBtn.appendChild(pageButton);
+    }
+
+    // "Next" button
+    const nextButton = document.createElement('button');
+    nextButton.innerText = 'Next'; 
+    nextButton.classList.add('next-btn');
+    nextButton.disabled = currentPage === totalPages; // Disable if on the last page
+
+    nextButton.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            fetchImages(query, currentPage);
+        }
+    });
+    loadMoreBtn.appendChild(nextButton);
+
+    // Show/hide load more button
+    loadMoreBtn.style.display = currentPage === totalPages ? 'none' : 'block';
+};
+
+// Event listener for the search form submission
+searchForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const inputText = searchInput.value.trim();
+    if (inputText !== '') {
+        currentPage = 1;
+        fetchImages(inputText, currentPage);
+        suggestionsList.innerHTML = ''; // Clear suggestions
+        searchForm.style.display = 'none'; // Hide search form after search
+    } else {
+        imagesContainer.innerHTML = `<h2>Please enter a search term</h2>`;
+        loadMoreBtn.innerHTML = ''; // Clear pagination if no input
+    }
+});
+
+
+    </script>
+</body>
+</html>
